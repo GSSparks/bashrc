@@ -1,5 +1,5 @@
 # bashrc
-My Bash config file.
+My Bash login script.
 
 ## Features include:
 * Displays current Git branch name.
