@@ -15,4 +15,4 @@ My Bash login script.
 ## Requirements
 * Needs DejaVu Mono fonts from [Nerd Fonts](https://www.nerdfonts.com).
 * Needs inxi cli weather app installed.
-* Needs tmux and nano
+* Needs tmux, nano, and screenfetch
