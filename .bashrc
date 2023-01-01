@@ -5,18 +5,24 @@
 # If not running interactively, don't do anything
 [[ $- != *i* ]] && return
 
-# Outside Temperature
-TEMP=$(inxi -W 46711 | grep temperature | awk -F: '{ print $3 }' | awk -F' ' '{ print $3 }' | sed -e 's/(//')
-COND=$(inxi -W 47611 | grep conditions | awk -F: '{ print $4 }')
+# Current Weather
+function __weather()
+{
+    TEMP=$(inxi -W 46711 | grep temperature | awk -F: '{ print $3 }' | awk -F' ' '{ print $3 }' | sed -e 's/(//')
+    COND=$(inxi -W 47611 | grep conditions | awk -F: '{ print $4 }')
 
-if [[ COND=='Overcast clouds' ]]; then
-    WEATHICO=""
-elif [[ COND=='Sunny' ]]; then
-    WEATHICO=""
-else
-    WEATHICO=""
-fi
+    if [[ COND=='Overcast clouds' ]]; then
+        WEATHICO=""
+    elif [[ COND=='Sunny' ]]; then
+        WEATHICO=""
+    else
+        WEATHICO=""
+    fi
+    
+    echo -n $TEMP°F $WEATHERICO
+}
 
+# The following cygwin and cygpath functions are from https://dev.to/vuong/let-s-add-cygwin-into-windows-terminal-and-customize-it-for-development-looks-1hp8
 # Just shorten the cygwin path
 function __short_wd_cygwin() 
 {
@@ -69,7 +75,7 @@ BG_GREEN="\[\e[42m\]"
 BG_MAGENTA="\[\e[45m\]"
 
 export PS1=\
-"\n${FG_BLUE}╭─${FG_CYAN}  ${NORM}${TEMP}°F ${WEATHICO} ${FG_CYAN}${FMT_BOLD}\d ${FG_WHITE}\t${FMT_UNBOLD} ${FG_MAGENTA}"\
+"\n${FG_BLUE}╭─${FG_CYAN}  ${NORM}$(__weather) ${FG_CYAN}${FMT_BOLD}\d ${FG_WHITE}\t${FMT_UNBOLD} ${FG_MAGENTA}"\
 "${FG_GREY}\$(__short_wd_cygwin) "\
 "${FG_BLUE} \$(find . -mindepth 1 -maxdepth 1 -type d | wc -l) "\
 " \$(find . -mindepth 1 -maxdepth 1 -type f | wc -l) "\
