@@ -8,8 +8,8 @@
 # Current Weather
 function __weather()
 {
-    TEMP=$(inxi -W 46711 | grep temperature | awk -F: '{ print $3 }' | awk -F' ' '{ print $3 }' | sed -e 's/(//')
-    COND=$(inxi -W 47611 | grep conditions | awk -F: '{ print $4 }')
+    TEMP=$(inxi -w | grep temperature | awk -F: '{ print $3 }' | awk -F' ' '{ print $3 }' | sed -e 's/(//')
+    COND=$(inxi -w | grep conditions | awk -F: '{ print $4 }')
 
     if [[ COND=='Overcast clouds' ]]; then
         WEATHICO=""
