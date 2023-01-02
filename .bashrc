@@ -8,18 +8,20 @@
 # Current Weather
 function __weather()
 {
-    TEMP=$(inxi -w | grep temperature | awk -F: '{ print $3 }' | awk -F' ' '{ print $3 }' | sed -e 's/(//')
-    COND=$(inxi -w | grep conditions | awk -F: '{ print $4 }')
-
-    if [[ COND=='Overcast clouds' ]]; then
+    LOCATION='' # Place lattitude and longitude coordinates in this variable. Ex. lat=40.730610&lon=-73.935242
+    TEMP=$(curl -s 'https://forecast.weather.gov/MapClick.php?$LOCATION' | grep 'myforecast-current-lrg' | awk -F'>' '{ print $2 }' | awk -F'&' '{ print $1 }')
+    COND=$(curl -s 'https://forecast.weather.gov/MapClick.php?$LOCATION' | grep '<p class="myforecast-current">' | awk -F'> ' '{ print $2 }' | awk -F'<' '{ print $1 }')
+    if [[ $COND == 'Overcast clouds' ]]; then
         WEATHICO=""
-    elif [[ COND=='Sunny' ]]; then
+    elif [[ $COND == 'Sunny' ]]; then
         WEATHICO=""
+    elif [[ $COND == 'Fog/Mist' ]]; then
+        WEATHICO=""
     else
         WEATHICO=""
     fi
-    
-    echo -n $TEMP°F $WEATHERICO
+
+    echo -n $TEMP°F $WEATHICO
 }
 
 # The following cygwin and cygpath functions are from https://dev.to/vuong/let-s-add-cygwin-into-windows-terminal-and-customize-it-for-development-looks-1hp8
