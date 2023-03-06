@@ -5,20 +5,33 @@
 # If not running interactively, don't do anything
 [[ $- != *i* ]] && return
 
+# Autostart tmux
+if [[ -z $TMUX ]]; then
+    tmux
+fi
+
 # Current Weather
 function __weather()
 {
     LOCATION='' # Place lattitude and longitude coordinates in this variable. Ex. lat=40.730610&lon=-73.935242
-    TEMP=$(curl -s 'https://forecast.weather.gov/MapClick.php?$LOCATION' | grep 'myforecast-current-lrg' | awk -F'>' '{ print $2 }' | awk -F'&' '{ print $1 }')
-    COND=$(curl -s 'https://forecast.weather.gov/MapClick.php?$LOCATION' | grep '<p class="myforecast-current">' | awk -F'> ' '{ print $2 }' | awk -F'<' '{ print $1 }')
-    if [[ $COND == 'Overcast clouds' ]]; then
-        WEATHICO=""
-    elif [[ $COND == 'Sunny' ]]; then
-        WEATHICO=""
-    elif [[ $COND == 'Fog/Mist' ]]; then
-        WEATHICO=""
+    DATA=$(curl -s https://forecast.weather.gov/MapClick.php?${LOCATION})
+    TEMP=$(echo "$DATA" | grep 'current-lrg' | awk -F '>' '{ print $2 }' | awk -F '&' '{ print $1 }')
+    if [[ $TEMP == 'N/A</p' ]]; then
+        TEMP='...'
+    fi
+  
+    COND=$(echo "$DATA" | grep 'myforecast-current' | awk -F '>' '{ print $2 }' | awk -F '<' '{ print $1 }')
+
+    if [[ $COND == 'Sunny' || 'Fair' ]]; then
+        WEATHICO=''
+    elif [[ $COND == ' Fog/Mist' || $COND == 'Fog' ]]; then
+        WEATHICO=''
+    elif [[ $COND == 'Overcast' || $COND == 'Cloudy' || $COND == 'Mostly Cloudy' ]]; then
+        WEATHICO=''
+    elif [[ $COND == 'Partly Cloudy' || $COND == 'Mostly Sunny' ]]; then
+        WEATHICO=''
     else
-        WEATHICO=""
+        WEATHICO=$COND
     fi
 
     echo -n $TEMP°F $WEATHICO
@@ -37,77 +50,53 @@ function __short_wd_cygwin()
     echo -n $newPWD
 }
 
-# Convert shorten path and shorten the Windows path
-function __short_wd_cygpath() 
-{
-    num_dirs=3
-    newPWD=$(cygpath -C ANSI -w ${PWD/#$HOME/~})
-    if [ $(echo -n $newPWD | awk -F '\\' '{print NF}') -gt $num_dirs ]; then
-        newPWD=$(echo -n $newPWD | awk -F '\\' '{print $1 "\\...\\" $(NF-1) "\\" $(NF)}')
-    fi
-
-    echo -n $newPWD
-}
-
 # Set Colors
-COL1=$(tput setaf 226)
-COL2=$(tput setaf 172)
-COL3=$(tput setaf 106)
-COL4=$(tput setaf 167)
+FG_YELLOW=$(tput setaf 226)
+FG_PINK=$(tput setaf 172)
+FG_LIGHTYELLOW=$(tput setaf 106)
+FG_LIGHTPINK=$(tput setaf 167)
+FG_CYAN=$(tput setaf 6)
+FG_GREY=$(tput setaf 7)
 NORM=$(tput sgr0)
 BOLD=$(tput bold)
 DIM=$(tput dim)
-FFMT_BOLD="\[\e[1m\]"
-FMT_DIM="\[\e[2m\]"
-FMT_RESET="\[\e[0m\]"
-FMT_UNBOLD="\[\e[22m\]"
-FMT_UNDIM="\[\e[22m\]"
-FG_BLACK="\[\e[30m\]"
-FG_BLUE="\[\e[34m\]"
-FG_CYAN="\[\e[36m\]"
-FG_GREEN="\[\e[32m\]"
-FG_GREY="\[\e[37m\]"
-FG_MAGENTA="\[\e[35m\]"
-FG_RED="\[\e[31m\]"
-FG_WHITE="\[\e[97m\]"
-BG_BLACK="\[\e[40m\]"
-BG_BLUE="\[\e[44m\]"
-BG_CYAN="\[\e[46m\]"
-BG_GREEN="\[\e[42m\]"
-BG_MAGENTA="\[\e[45m\]"
 
+# Create Prompt
 export PS1=\
-"\n${FG_BLUE}╭─${FG_CYAN}  ${NORM}$(__weather) ${FG_CYAN}${FMT_BOLD}\d ${FG_WHITE}\t${FMT_UNBOLD} ${FG_MAGENTA}"\
-"${FG_GREY}\$(__short_wd_cygwin) "\
-"${FG_BLUE} \$(find . -mindepth 1 -maxdepth 1 -type d | wc -l) "\
+"\n\[$FG_PINK\]╭─ \[$NORM\]$(__weather) \[$FG_CYAN\]\[$BOLD\]\d \[$FG_WHITE\]\t\[$NORM\]"\
+" \[$FG_GREY\]\$(__short_wd_cygwin) \[$FG_LIGHTPINK\]"\
+" \$(find . -mindepth 1 -maxdepth 1 -type d | wc -l) "\
 " \$(find . -mindepth 1 -maxdepth 1 -type f | wc -l) "\
-" \$(find . -mindepth 1 -maxdepth 1 -type l | wc -l) "\
-"${FMT_RESET}${FG_CYAN}"\
-"\$(git branch 2> /dev/null | grep '^*' | colrm 1 2 | xargs -I BRANCH echo -n \"${COL1}BRANCH${FMT_RESET}${FG_GREEN}\")"\
-"\n${FG_BLUE}╰▶${FG_CYAN} $COL2\u$NORM@$COL3$BOLD\h$NORM: ¢ ${FMT_RESET}"
+" \$(find . -mindepth 1 -maxdepth 1 -type l | wc -l)"\
+"\$(git branch 2> /dev/null | grep "^*" | colrm 1 2 | xargs -I BRANCH echo -n \" \[$FG_YELLOW\] BRANCH \[$NORM\]\")"\
+"\n\[$FG_PINK\]╰─▶ \u\[$NORM\]@\[$FG_LIGHTYELLOW\]\[$BOLD\]\h\[$NORM\]: ¢ "
 
 # Display system information.
 if command -v screenfetch; then
     screenfetch
 fi
 
-# History Formatting and Tweaks
+
+# Timestamp history
 export HISTTIMEFORMAT="%F %T "
-export HISTCONTROL=ignoredups:erasedups
 
-# Set Nano as default editor if it exists.
-if command -v nano; then
-    export VISUAL=nano
-    export EDITOR=nano
-fi
+# History settings 
+export HISTCONTROL=ignoreboth
+shopt -s histappend
+shopt -s checkwinsize
 
-# Autostart tmux with default layout
-if [ -z "$TMUX" ]; then
-   tmux
-fi
+# Set Vim as default editor.
+export VISUAL=vim
+export EDITOR=vim
 
 # Set Aliases
-alias ls="ls -la --color=auto"
-alias ..="cd .."
-alias ...="cd ../.."
-alias mkdir="mkdir -p -v"
+alias ls='ls -la --color=auto'
+alias ..='cd ..'
+alias ...='cd ../..'
+alias mkdir='mkdir -p -v'
+alias refresh='clear; source $HOME/.bashrc'  # to update weather info
+alias edit='vim'
+fix-newline() {
+  sed -i 's/\\n/\'$'\n/g' "$*"  # With my workflow I run into logs that use a literal '\n' (Think Ansible logs). This function will replace all literal '\n' with a newline.
+}
+
