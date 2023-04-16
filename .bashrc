@@ -5,8 +5,14 @@
 # If not running interactively, don't do anything
 [[ $- != *i* ]] && return
 
-source ~/.aliases
-source ~/.aliases_private
+# Load sources if they exists
+if [[ -f ~/.aliases ]]; then
+    source ~/.aliases
+fi
+
+if [[ -f ~/.aliases_private ]]; then
+    source ~/.aliases_private
+fi
 
 # Autostart tmux
 if [[ -z $TMUX ]]; then
