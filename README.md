@@ -8,7 +8,8 @@ My Bash login script.
 * Adds time format to history and ignores and erases duplicate entries.
 * Displays system information using screenfetch.
 * Display date, time, and weather information in prompt
-* Weather is curled from weather.gov and updated every 30 minutes.
+* Asks for zip code if one is not set for weather.
+* Weather is curled from wttr.in and updated every 30 minutes.
 * Useful Aliases such as `..` for `cd ..` and `...` for `cd ../..`
 
 ![Screenshot](Bash.png?raw=true "Screenshot")
