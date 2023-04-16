@@ -19,10 +19,25 @@ if [[ -z $TMUX ]]; then
     tmux
 fi
 
+# Set Location for Weather
+function __set_location() {
+  read -p "Enter your 5-digit zip code: " zip_code
+  if [[ $zip_code =~ ^[0-9]{5}$ ]]; then
+    echo $zip_code > ~/.weather_location
+  else
+    echo "Invalid zip code. Please enter a valid 5-digit zip code."
+    __set_location
+  fi
+}
+
 # Current Weather
 function __weather() {
-    # Set the location for the weather request
-    LOCATION='lat=40.65826500000003&lon=-84.95273499999996'
+    # Check if location file exists
+    if [ ! -f ~/.weather_location ]; then
+        __set_location
+    else
+        LOCATION="zip=$(cat ~/.weather_location)"
+    fi
 
     # Get the current time
     NOW=$(date +%s)
@@ -30,13 +45,10 @@ function __weather() {
     # Check if it's been at least 30 minutes since the last retrieval
     if [[ ! -f ~/.weather ]] || [[ $(expr $NOW - $(date -r ~/.weather +%s)) -ge 1800 ]]; then
         # If so, retrieve the weather and update the file with the current time
-        DATA=$(curl -s https://forecast.weather.gov/MapClick.php?${LOCATION})
-        TEMP=$(echo "$DATA" | grep 'current-lrg' | awk -F '>' '{ print $2 }' | awk -F '&' '{ print $1 }')
-        if [[ $TEMP == 'N/A</p' ]]; then
-            TEMP='...'
-        fi
+        DATA=$(curl -s "https://wttr.in/$LOCATION?format=%C,%t")
+        TEMP=$(echo "$DATA" | awk -F ',' '{ print $2 }' | sed 's/^\+\|\.$//g')
       
-        COND=$(echo "$DATA" | grep 'myforecast-current' | awk -F '>' '{ print $2 }' | awk -F '<' '{ print $1 }')
+        COND=$(echo "$DATA" | awk -F ',' '{ print $1 }')
 
         if [[ $COND == 'Sunny' || 'Fair' ]]; then
             WEATHICO=''
@@ -44,14 +56,13 @@ function __weather() {
             WEATHICO=''
         elif [[ $COND == 'Overcast' || $COND == 'Cloudy' || $COND == 'Mostly Cloudy' ]]; then
             WEATHICO=''
-        elif [[ $COND == 'Partly Cloudy' || $COND == 'Mostly Sunny' ]]; then
+        elif [[ $COND == 'Partly cloudy' || $COND == 'Mostly Sunny' ]]; then
             WEATHICO=''
         else
             WEATHICO=$COND
         fi
 
-        echo -n $TEMP°F $WEATHICO > ~/.weather
-        echo $NOW > ~/.weather_time
+        echo -n $TEMP $WEATHICO > ~/.weather
         cat ~/.weather
     else
         cat ~/.weather
