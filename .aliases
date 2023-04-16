@@ -1,0 +1,78 @@
+# Set Aliases
+alias ls='ls -la --color=auto'
+alias ..='cd ..'
+alias ...='cd ../..'
+alias mkdir='mkdir -p -v'
+alias refresh='clear; source $HOME/.bashrc'  # to update weather info
+alias edit='vim'
+alias cat='bat'
+
+function fix-newline() {
+  sed -i 's/\\n/\'$'\n/g' "$*"  # replace all literal \n with a newline
+}
+
+alias whois-on-lan='sudo nmap -sP $(ip addr show | grep "wlan0" | grep -E "inet.*brd" | awk "{print $2}" | cut -d "/" -f1 | cut -d "." -f1-3).0/24'
+
+function root-dl {  # Copy file from remote server that requires elevated privileges
+    if [[ $# -ne 3 ]]; then
+        echo "Usage: root-dl <user@remote> <remote_file> <local_file>"
+        return 1
+    fi
+    
+    local ssh_options=""
+    if ! ssh -o HostKeyAlgorithms=+ssh-rsa -o BatchMode=yes -o ConnectTimeout=10 "$1" true &>/dev/null; then
+        ssh_options="-o HostKeyAlgorithms=+ssh-rsa"
+    fi
+    
+    ssh -tt $ssh_options "$1" "sudo -S cat '$2'" > "$3"
+}
+
+# -- Media Aliases
+alias play951='mpv https://ice64.securenetsystems.net/WAJI?playSessionID=8882F088-FBC7-F008-2C64ACB2C771047E'
+alias play1039='mpv https://prod-54-84-80-233.wostreaming.net/adamsradio-wwfwfmaac-ibc1?'
+alias play80s='mpv http://streams.80s80s.de/web/mp3-192/streams.80s80s.de/'
+alias playnumetal='mpv http://stream.revma.ihrhls.com/zc9483'
+
+function playtube() {
+  mpv --ytdl-format=bestaudio ytdl://ytsearch10:"$*"
+}
+
+# -- Vagrant docker
+alias vagrant="
+  mkdir -p ~/.vagrant.d/{boxes,data,tmp}; \
+  docker run -it --rm \
+    -e LIBVIRT_DEFAULT_URI \
+    -v /var/run/libvirt/:/var/run/libvirt/ \
+    -v ~/.vagrant.d:/.vagrant.d \
+    -v $(pwd):$(pwd) \
+    -w $(pwd) \
+    --network host \
+    vagrantlibvirt/vagrant-libvirt:latest \
+    vagrant"
+
+# -- Nixos docker image to emulate Gitlab CI environment
+alias ci-env='
+  clear &&
+  docker run -it --rm \
+    --cpus $(nproc) \
+    -e LIBVIRT_DEFAULT_URI \
+    -v /var/run/libvirt:/var/run/libvirt \
+    -v $(readlink -f "${PWD%/*}"):"${PWD%/*}" \
+    -v "$HOME"/.ci-env:/root \
+    -w "$PWD" \
+    --network host \
+    nixos/nix \
+    bash'
+
+# -- Centos 7 docker image environment
+alias centos7='
+  docker run -it --rm \
+    --cpus $(nproc) \
+    -e LIBVIRT_DEFAULT_URI \
+    -v $(readlink -f "${PWD%/*}"):"${PWD%/*}" \
+    -w "$PWD" \
+    --network host \
+    centos:7 \
+    bash'
+
+
