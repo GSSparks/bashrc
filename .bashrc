@@ -68,6 +68,34 @@ function __short_wd_cygwin()
     echo -n $newPWD
 }
 
+# Show if the git tree is dirty and how many uncommits are present
+function __git_dirty() {
+    [[ $(git status 2> /dev/null | tail -n1) != "nothing to commit, working tree clean" ]] && echo -n " "
+    uncommits=$(git status --porcelain 2>/dev/null| wc -l | tr -d ' ')
+    if [[ $uncommits != "0" ]]; then 
+        echo " $uncommits"
+    fi
+}
+
+# Display an arrow followed by the number commits that are ahead or behind the remote branch.
+function __git_branch_status {
+  local branch_status=$(git rev-parse --abbrev-ref HEAD 2> /dev/null | xargs git rev-parse --symbolic-full-name @{u} 2> /dev/null || echo "")
+  if [[ "$branch_status" ]]; then
+    local ahead_behind=$(git rev-list --left-right --count HEAD...@{upstream} 2>/dev/null \
+        | awk '{print $1}')
+    if [[ $ahead_behind -gt 0 ]]; then
+      echo -n "${branch_status##*/}"
+      echo -n "  $ahead_behind "
+    elif [[ $ahead_behind -lt 0 ]]; then
+      echo -n "${branch_status##*/}"
+      echo -n "  $((-ahead_behind)) "
+    else
+      echo -n "${branch_status##*/}"
+      echo -n "  "
+    fi
+  fi
+}
+
 PROMPT_COMMAND=__prompt_command
 
 __prompt_command() {
@@ -85,12 +113,12 @@ __prompt_command() {
     BOLD=$(tput bold)
 
     # Create Prompt
-    PS1+='\n\[$FG_ORANGE\]╭─ \[$NORM\]$(__weather) \[$FG_CYAN\]\[$BOLD\]\d \t\[$NORM\]'
+    PS1+='\n\[$FG_ORANGE\]╭─ \[$NORM\]$(__weather) \[$FG_CYAN\]\[$BOLD\] \d \t \[$NORM\]'
     PS1+='\[$FG_GREY\]$(__short_wd_cygwin) \[$FG_RED\]' 
     PS1+=" \$(find . -mindepth 1 -maxdepth 1 -type d | wc -l) "
-    PS1+=" \$(find . -mindepth 1 -maxdepth 1 -type f | wc -l)"
-    PS1+=" \$(find . -mindepth 1 -maxdepth 1 -type l | wc -l)"
-    PS1+="\$(git branch 2> /dev/null | grep "^*" | colrm 1 2 | xargs -I BRANCH echo -n \" \[$FG_YELLOW\] BRANCH \")"
+    PS1+=" \$(find . -mindepth 1 -maxdepth 1 -type f | wc -l) "
+    PS1+=" \$(find . -mindepth 1 -maxdepth 1 -type l | wc -l) "
+    PS1+="\[$FG_YELLOW\]\[$FG_RED\]$(__git_dirty)\[$FG_YELLOW\] $(__git_branch_status)"
     PS1+='\n\[$FG_ORANGE\]╰─▶ \u\[$NORM\]@\[$FG_GREEN\]\[$BOLD\]\h\[$NORM\] '
 
     if [ $EXIT != 0 ]; then
