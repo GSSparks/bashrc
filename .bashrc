@@ -21,7 +21,7 @@ fi
 
 # Set Location for Weather
 function __set_location() {
-  read -p "Enter your 5-digit zip code: " zip_code
+  read -p $'Location needs to be set for the weather function.\x0aEnter your 5-digit zip code: ' zip_code
   if [[ $zip_code =~ ^[0-9]{5}$ ]]; then
     echo $zip_code > ~/.weather_location
   else
@@ -36,7 +36,7 @@ function __weather() {
     if [ ! -f ~/.weather_location ]; then
         __set_location
     else
-        LOCATION="zip=$(cat ~/.weather_location)"
+        LOCATION=$(cat ~/.weather_location)
     fi
 
     # Get the current time
@@ -45,24 +45,10 @@ function __weather() {
     # Check if it's been at least 30 minutes since the last retrieval
     if [[ ! -f ~/.weather ]] || [[ $(expr $NOW - $(date -r ~/.weather +%s)) -ge 1800 ]]; then
         # If so, retrieve the weather and update the file with the current time
-        DATA=$(curl -s "https://wttr.in/$LOCATION?format=%C,%t")
-        TEMP=$(echo "$DATA" | awk -F ',' '{ print $2 }' | sed 's/^\+\|\.$//g')
-      
+        DATA=$(curl -s "https://wttr.in/$LOCATION?format=%c,%t")
+        TEMP=$(echo "$DATA" | awk -F ',' '{ print $2 }' | sed 's/+//g')
         COND=$(echo "$DATA" | awk -F ',' '{ print $1 }')
-
-        if [[ $COND == 'Sunny' || 'Fair' ]]; then
-            WEATHICO=''
-        elif [[ $COND == ' Fog/Mist' || $COND == 'Fog' ]]; then
-            WEATHICO=''
-        elif [[ $COND == 'Overcast' || $COND == 'Cloudy' || $COND == 'Mostly Cloudy' ]]; then
-            WEATHICO=''
-        elif [[ $COND == 'Partly cloudy' || $COND == 'Mostly Sunny' ]]; then
-            WEATHICO=''
-        else
-            WEATHICO=$COND
-        fi
-
-        echo -n $TEMP $WEATHICO > ~/.weather
+        echo -n $TEMP $COND > ~/.weather
         cat ~/.weather
     else
         cat ~/.weather
@@ -109,9 +95,10 @@ screenfetch -A custom
 export HISTTIMEFORMAT="[%F %T] "
 
 # History settings 
-export HISTCONTROL="ignorespace:erasedups"
+export HISTCONTROL="ignoreboth:erasedups"
 export HISTSIZE=10000
 export HISTFILESIZE=10000
+history -r
 
 # Setting various shell options
 shopt -s histappend
