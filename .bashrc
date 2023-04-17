@@ -68,25 +68,39 @@ function __short_wd_cygwin()
     echo -n $newPWD
 }
 
-# Set Colors and Style
-FG_YELLOW=$(tput setaf 226)
-FG_ORANGE=$(tput setaf 172)
-FG_GREEN=$(tput setaf 106)
-FG_RED=$(tput setaf 167)
-FG_CYAN=$(tput setaf 6)
-FG_GREY=$(tput setaf 7)
-NORM=$(tput sgr0)
-BOLD=$(tput bold)
+PROMPT_COMMAND=__prompt_command
 
-# Create Prompt
-export PS1=\
-'\n\[$FG_ORANGE\]╭─ \[$NORM\]$(__weather) \[$FG_CYAN\]\[$BOLD\]\d \t\[$NORM\]'\
-' \[$FG_GREY\]$(__short_wd_cygwin) \[$FG_RED\]'\
-" \$(find . -mindepth 1 -maxdepth 1 -type d | wc -l) "\
-" \$(find . -mindepth 1 -maxdepth 1 -type f | wc -l) "\
-" \$(find . -mindepth 1 -maxdepth 1 -type l | wc -l)"\
-"\$(git branch 2> /dev/null | grep "^*" | colrm 1 2 | xargs -I BRANCH echo -n \" \[$FG_YELLOW\] BRANCH \")"\
-'\n\[$FG_ORANGE\]╰─▶ \u\[$NORM\]@\[$FG_GREEN\]\[$BOLD\]\h\[$NORM\]: ¢ '
+__prompt_command() {
+    EXIT="$?"
+    PS1=""
+
+    # Set Colors and Style
+    FG_YELLOW=$(tput setaf 226)
+    FG_ORANGE=$(tput setaf 172)
+    FG_GREEN=$(tput setaf 106)
+    FG_RED=$(tput setaf 167)
+    FG_CYAN=$(tput setaf 6)
+    FG_GREY=$(tput setaf 7)
+    NORM=$(tput sgr0)
+    BOLD=$(tput bold)
+
+    # Create Prompt
+    PS1+='\n\[$FG_ORANGE\]╭─ \[$NORM\]$(__weather) \[$FG_CYAN\]\[$BOLD\]\d \t\[$NORM\]'
+    PS1+='\[$FG_GREY\]$(__short_wd_cygwin) \[$FG_RED\]' 
+    PS1+=" \$(find . -mindepth 1 -maxdepth 1 -type d | wc -l) "
+    PS1+=" \$(find . -mindepth 1 -maxdepth 1 -type f | wc -l)"
+    PS1+=" \$(find . -mindepth 1 -maxdepth 1 -type l | wc -l)"
+    PS1+="\$(git branch 2> /dev/null | grep "^*" | colrm 1 2 | xargs -I BRANCH echo -n \" \[$FG_YELLOW\] BRANCH \")"
+    PS1+='\n\[$FG_ORANGE\]╰─▶ \u\[$NORM\]@\[$FG_GREEN\]\[$BOLD\]\h\[$NORM\] '
+
+    if [ $EXIT != 0 ]; then
+        PS1+="\[$FG_RED\]:(\[$NORM\] "
+    else
+        PS1+="\[$FG_YELLOW\]:)\[$NORM\] "
+    fi
+
+    PS1+="¢ "
+}
 
 # Display system information.
 screenfetch -A custom
