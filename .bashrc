@@ -70,11 +70,13 @@ function __short_wd_cygwin()
 
 # Show if the git tree is dirty and how many uncommits are present
 function __git_dirty() {
+  if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     [[ $(git status 2> /dev/null | tail -n1) != "nothing to commit, working tree clean" ]] && echo -n " "
     uncommits=$(git status --porcelain 2>/dev/null| wc -l | tr -d ' ')
     if [[ $uncommits != "0" ]]; then 
         echo " $uncommits"
     fi
+  fi
 }
 
 # Display an arrow followed by the number commits that are ahead or behind the remote branch.
@@ -118,7 +120,11 @@ __prompt_command() {
     PS1+=" \$(find . -mindepth 1 -maxdepth 1 -type d | wc -l) "
     PS1+=" \$(find . -mindepth 1 -maxdepth 1 -type f | wc -l) "
     PS1+=" \$(find . -mindepth 1 -maxdepth 1 -type l | wc -l) "
-    PS1+="\[$FG_YELLOW\]\[$FG_RED\]$(__git_dirty)\[$FG_YELLOW\] $(__git_branch_status)"
+    
+    if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+      PS1+="\[$FG_YELLOW\]\[$FG_RED\]$(__git_dirty)\[$FG_YELLOW\] $(__git_branch_status)"
+    fi
+    
     PS1+='\n\[$FG_ORANGE\]╰─▶ \u\[$NORM\]@\[$FG_GREEN\]\[$BOLD\]\h\[$NORM\] '
 
     if [ $EXIT != 0 ]; then
