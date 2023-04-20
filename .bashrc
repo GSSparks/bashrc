@@ -81,7 +81,10 @@ function __git_dirty() {
 
 # Display an arrow followed by the number commits that are ahead or behind the remote branch.
 function __git_branch_status {
-  local branch_status=$(git rev-parse --abbrev-ref HEAD 2> /dev/null | xargs git rev-parse --symbolic-full-name @{u} 2> /dev/null || echo "")
+  local branch_status=$(git rev-parse --abbrev-ref HEAD 2> /dev/null | xargs git rev-parse --symbolic-full-name @{u} 2>&1 || echo "")
+  if [[ "$branch_status" == *"no upstream configured for branch"* ]]; then
+    branch_status="* $(git rev-parse --abbrev-ref HEAD) *"
+  fi
   if [[ "$branch_status" ]]; then
     local ahead_behind=$(git rev-list --left-right --count HEAD...@{upstream} 2>/dev/null \
         | awk '{print $1}')
@@ -97,6 +100,22 @@ function __git_branch_status {
     fi
   fi
 }
+
+# Update current directory stats -- called by `cd`
+function __dfl_count() {
+  dir_count=" $(find . -mindepth 1 -maxdepth 1 -type d | wc -l)" 
+  file_count=" $(find . -mindepth 1 -maxdepth 1 -type f | wc -l)"
+  link_count=" $(find . -mindepth 1 -maxdepth 1 -type l | wc -l)"
+}
+
+# Update the current directory stats when changing directories
+cd() {
+  builtin cd "$@"
+  __dfl_count
+}
+
+# Call the function to initialize the current directory stats
+__dfl_count
 
 PROMPT_COMMAND=__prompt_command
 
@@ -115,17 +134,20 @@ __prompt_command() {
     BOLD=$(tput bold)
 
     # Create Prompt
-    PS1+='\n\[$FG_ORANGE\]╭─ \[$NORM\]$(__weather) \[$FG_CYAN\]\[$BOLD\] \d \t \[$NORM\]'
-    PS1+='\[$FG_GREY\]$(__short_wd_cygwin) \[$FG_RED\]' 
-    PS1+=" \$(find . -mindepth 1 -maxdepth 1 -type d | wc -l) "
-    PS1+=" \$(find . -mindepth 1 -maxdepth 1 -type f | wc -l) "
-    PS1+=" \$(find . -mindepth 1 -maxdepth 1 -type l | wc -l) "
+    PS1+="\n\[$FG_ORANGE\]╭─ \[$NORM\]\$(__weather) \[$FG_CYAN\]\[$BOLD\] \d \t \[$NORM\]"
+    PS1+="\[$FG_GREY\]\$(__short_wd_cygwin) \[$FG_RED\]" 
     
+    PS1+="\$dir_count \$file_count \$link_count "
+
     if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-      PS1+="\[$FG_YELLOW\]\[$FG_RED\]$(__git_dirty)\[$FG_YELLOW\] $(__git_branch_status)"
+      PS1+="\[$FG_YELLOW\]\[$FG_RED\]\$(__git_dirty)\[$FG_YELLOW\] \$(__git_branch_status)"
     fi
     
-    PS1+='\n\[$FG_ORANGE\]╰─▶ \u\[$NORM\]@\[$FG_GREEN\]\[$BOLD\]\h\[$NORM\] '
+    PS1+="\n\[$FG_ORANGE\]╰─▶ \u\[$NORM\]@\[$FG_GREEN\]\[$BOLD\]\h\[$NORM\] "
+    
+    if [[ -n "$IN_NIX_SHELL" ]]; then
+      PS1+="\[$FG_RED\]{nix-shell}\[$NORM\] "
+    fi
 
     if [ $EXIT != 0 ]; then
         PS1+="\[$FG_RED\]:(\[$NORM\] "
@@ -157,6 +179,9 @@ shopt -s direxpand
 # Set Vim as default editor.
 export VISUAL=vim
 export EDITOR=vim
+
+# Set TERM
+export TERM=xterm-256color
 
 # Direnv hook
 eval "$(direnv hook bash)"
