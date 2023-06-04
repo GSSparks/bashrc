@@ -21,22 +21,45 @@ fi
 
 # Set Location for Weather
 function __set_location() {
+  source ~/.weather_api
   read -p $'Location needs to be set for the weather function.\x0aEnter your 5-digit zip code: ' zip_code
   if [[ $zip_code =~ ^[0-9]{5}$ ]]; then
-    echo $zip_code > ~/.weather_location
+    DATA=$(curl -s "http://api.openweathermap.org/geo/1.0/zip?zip=$zip_code,us&appid=$API_KEY")
+    lattitude=$(echo "$DATA" | jq -r '.lat')
+    longitude=$(echo "$DATA" | jq -r '.lon')
+    printf "ZIP=%s\nLAT=%s\nLON=%s\n" "$zip_code" "$lattitude" "$longitude" > ~/.weather_location
   else
     echo "Invalid zip code. Please enter a valid 5-digit zip code."
     __set_location
   fi
 }
 
+function __set_weather_api() {
+  read -p $'Please enter your Openweather.org API key: ' api_key
+  # Perform a test request to validate the API key
+  response=$(curl -s "https://api.openweathermap.org/data/2.5/weather?q=London,uk&appid=$api_key")
+  if [[ $response =~ "Invalid API key" ]]; then
+    echo "Invalid API key. Please enter a valid OpenWeatherMap API key."
+    __set_weather_api
+  else
+    printf "API_KEY=%s\n" "$api_key" > ~/.weather_api
+  fi
+}
+
 # Current Weather
 function __weather() {
+    # Check whether API key exists
+    if [ ! -f ~/.weather_api ]; then
+      __set_weather_api
+    else
+      source ~/.weather_api
+    fi
+
     # Check if location file exists
     if [ ! -f ~/.weather_location ]; then
         __set_location
     else
-        LOCATION=$(cat ~/.weather_location)
+        source ~/.weather_location
     fi
 
     # Get the current time
@@ -45,19 +68,42 @@ function __weather() {
     # Check if it's been at least 30 minutes since the last retrieval
     if [[ ! -f ~/.weather ]] || [[ $(expr $NOW - $(date -r ~/.weather +%s)) -ge 1800 ]]; then
         # If so, retrieve the weather and update the file with the current time
-        DATA=$(curl -s "https://wttr.in/$LOCATION?format=%c,%t")
-        TEMP=$(echo "$DATA" | awk -F ',' '{ print $2 }' | sed 's/+//g')
-        COND=$(echo "$DATA" | awk -F ',' '{ print $1 }')
-        echo -n $TEMP $COND > ~/.weather
-        cat ~/.weather
-    else
-        cat ~/.weather
+       DATA=$(curl -m 5 -s "https://wttr.in/$ZIP?format=%c,%t")
+       if [[ $? -eq 0 ]] && [[ $DATA != "Unknown location; please try"* ]]; then
+         # If successful, extract the temperature and condition
+         TEMP=$(echo "$DATA" | awk -F ',' '{ print $2 }' | sed 's/+//g')
+         COND=$(echo "$DATA" | awk -F ',' '{ print $1 }')
+       else
+         # If wttr.in fails, try openweathermap.org
+         DATA=$(curl -m 5 -s "https://api.openweathermap.org/data/2.5/weather?lat=$LAT&lon=$LON&appid=$API_KEY&units=imperial")
+         if [[ $? -eq 0 ]]; then
+           # If successful, extract the temperature and condition
+           TEMP=$(echo "$DATA" | jq -r '.main.temp | round')'°F'
+           COND=$(echo "$DATA" | jq -r '.weather[0].description')
+           if [[ $COND == *"cloud"* ]]; then
+             ICON="☁️"
+           elif [[ $COND == *"rain"* ]]; then
+             ICON="🌧️"
+           elif [[ "$COND" == *"snow"* ]]; then
+             ICON="❄️"
+           else
+             ICON="☀️"
+           fi
+           COND=$ICON
+         else
+           # If both services fail, use an error message
+           TEMP="N/A"
+           COND="Weather service unavailable"
+         fi
+       fi
+       echo -n $TEMP $COND > ~/.weather
     fi
+    cat ~/.weather
 }
 
 # The following cygwin function is from https://dev.to/vuong/let-s-add-cygwin-into-windows-terminal-and-customize-it-for-development-looks-1hp8
 # Just shorten the cygwin path
-function __short_wd_cygwin() 
+function __short_wd_cygwin()
 {
     num_dirs=3
     newPWD="${PWD/#$HOME/~}"
@@ -73,7 +119,7 @@ function __git_dirty() {
   if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     [[ $(git status 2> /dev/null | tail -n1) != "nothing to commit, working tree clean" ]] && echo -n " "
     uncommits=$(git status --porcelain 2>/dev/null| wc -l | tr -d ' ')
-    if [[ $uncommits != "0" ]]; then 
+    if [[ $uncommits != "0" ]]; then
         echo " $uncommits"
     fi
   fi
@@ -89,13 +135,13 @@ function __git_branch_status {
     local ahead_behind=$(git rev-list --left-right --count HEAD...@{upstream} 2>/dev/null \
         | awk '{print $1}')
     if [[ $ahead_behind -gt 0 ]]; then
-      echo -n "${branch_status##*/}"
+      echo -n "${branch_status##*/}" | awk '{print substr($0,1,20)}' | awk '{if (length($0)==20) {print $0"..." } else {print $0}}' | tr -d '\n'
       echo -n "  $ahead_behind "
     elif [[ $ahead_behind -lt 0 ]]; then
-      echo -n "${branch_status##*/}"
+      echo -n "${branch_status##*/}" | awk '{print substr($0,1,20)}' | awk '{if (length($0)==20) {print $0"..." } else {print $0}}' | tr -d '\n'
       echo -n "  $((-ahead_behind)) "
     else
-      echo -n "${branch_status##*/}"
+      echo -n "${branch_status##*/}" | awk '{print substr($0,1,20)}' | awk '{if (length($0)==20) {print $0"..." } else {print $0}}' | tr -d '\n'
       echo -n "  "
     fi
   fi
@@ -103,7 +149,7 @@ function __git_branch_status {
 
 # Update current directory stats -- called by `cd`
 function __dfl_count() {
-  dir_count=" $(find . -mindepth 1 -maxdepth 1 -type d | wc -l)" 
+  dir_count=" $(find . -mindepth 1 -maxdepth 1 -type d | wc -l)"
   file_count=" $(find . -mindepth 1 -maxdepth 1 -type f | wc -l)"
   link_count=" $(find . -mindepth 1 -maxdepth 1 -type l | wc -l)"
 }
@@ -124,27 +170,27 @@ __prompt_command() {
     PS1=""
 
     # Set Colors and Style
-    FG_YELLOW=$(tput setaf 226)
-    FG_ORANGE=$(tput setaf 172)
+    FG_YELLOW=$(tput setaf 214)
+    FG_ORANGE=$(tput setaf 208)
     FG_GREEN=$(tput setaf 106)
     FG_RED=$(tput setaf 167)
-    FG_CYAN=$(tput setaf 6)
-    FG_GREY=$(tput setaf 7)
+    FG_CYAN=$(tput setaf 109)
+    FG_GREY=$(tput setaf 245)
     NORM=$(tput sgr0)
     BOLD=$(tput bold)
 
     # Create Prompt
     PS1+="\n\[$FG_ORANGE\]╭─ \[$NORM\]\$(__weather) \[$FG_CYAN\]\[$BOLD\] \d \t \[$NORM\]"
-    PS1+="\[$FG_GREY\]\$(__short_wd_cygwin) \[$FG_RED\]" 
-    
+    PS1+="\[$FG_GREY\]\$(__short_wd_cygwin) \[$FG_RED\]"
+
     PS1+="\$dir_count \$file_count \$link_count "
 
     if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
       PS1+="\[$FG_YELLOW\]\[$FG_RED\]\$(__git_dirty)\[$FG_YELLOW\] \$(__git_branch_status)"
     fi
-    
+
     PS1+="\n\[$FG_ORANGE\]╰─▶ \u\[$NORM\]@\[$FG_GREEN\]\[$BOLD\]\h\[$NORM\] "
-    
+
     if [[ -n "$IN_NIX_SHELL" ]]; then
       PS1+="\[$FG_RED\]{nix-shell}\[$NORM\] "
     fi
@@ -164,7 +210,7 @@ screenfetch -A custom
 # Timestamp history
 export HISTTIMEFORMAT="[%F %T] "
 
-# History settings 
+# History settings
 export HISTCONTROL="ignoreboth:erasedups"
 export HISTSIZE=10000
 export HISTFILESIZE=10000
