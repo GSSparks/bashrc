@@ -196,13 +196,20 @@ __prompt_command() {
     fi
 
     if [ $EXIT != 0 ]; then
-      if [[ $EXIT -ge 1 && $EXIT -le 254 ]]; then
+      if [ $EXIT == 1 ]; then
         PS1+="\[$FG_RED\]:(\[$NORM\] "
+      elif [ $EXIT == 2 ]; then
+        PS1+="\[$FG_ORANGE\]¯\\_(ツ)_/¯\[$NORM\] "
+      elif [[ $EXIT == 127 ]]; then
+        PS1+="\[$FG_RED\]:|\[$NORM\] "
       elif [ $EXIT == 255 ]; then
         PS1+="\[$FG_ORANGE\]:/\[$NORM\] "
+      else
+        PS1+="\[$FG_RED\]:(\[$NORM\] "
       fi
-    else
-      PS1+="\[$FG_YELLOW\]:)\[$NORM\] "
+    fi
+    if [ $EXIT == 0 ]; then
+      PS1+="\[$FG_YELLOW\]=)\[$NORM\] "
     fi
 
     PS1+="¢ "
