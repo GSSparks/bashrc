@@ -68,11 +68,11 @@ function __weather() {
     # Check if it's been at least 30 minutes since the last retrieval
     if [[ ! -f ~/.weather ]] || [[ $(expr $NOW - $(date -r ~/.weather +%s)) -ge 1800 ]]; then
         # If so, retrieve the weather and update the file with the current time
-       DATA=$(curl -m 5 -s "https://wttr.in/$ZIP?format=%c,%t")
+       DATA=$(curl -m 5 -s "https://wttr.in/$ZIP?format=1")
        if [[ $? -eq 0 ]] && [[ $DATA != "Unknown location; please try"* ]]; then
          # If successful, extract the temperature and condition
-         TEMP=$(echo "$DATA" | awk -F ',' '{ print $2 }' | sed 's/+//g')
-         COND=$(echo "$DATA" | awk -F ',' '{ print $1 }')
+         TEMP=$(echo "$DATA" | awk -F ' ' '{ print $2 }' | sed 's/+//g')
+         COND=$(echo "$DATA" | awk -F ' ' '{ print $1 }')
        else
          # If wttr.in fails, try openweathermap.org
          DATA=$(curl -m 5 -s "https://api.openweathermap.org/data/2.5/weather?lat=$LAT&lon=$LON&appid=$API_KEY&units=imperial")
@@ -196,9 +196,13 @@ __prompt_command() {
     fi
 
     if [ $EXIT != 0 ]; then
+      if [[ $EXIT -ge 1 && $EXIT -le 254 ]]; then
         PS1+="\[$FG_RED\]:(\[$NORM\] "
+      elif [ $EXIT == 255 ]; then
+        PS1+="\[$FG_ORANGE\]:/\[$NORM\] "
+      fi
     else
-        PS1+="\[$FG_YELLOW\]:)\[$NORM\] "
+      PS1+="\[$FG_YELLOW\]:)\[$NORM\] "
     fi
 
     PS1+="¢ "
