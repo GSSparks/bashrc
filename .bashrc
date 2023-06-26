@@ -21,13 +21,26 @@ fi
 
 # Set Location for Weather
 function __set_location() {
-  source ~/.weather_api
+  if [ ! -f ~/.weather_api ]; then
+    __set_weather_api
+  else
+    source ~/.weather_api
+  fi
+
   read -p $'Location needs to be set for the weather function.\x0aEnter your 5-digit zip code: ' zip_code
+  read -p $'Please enter your two-digit alphabetic country code: ' country_code
+  country_code=$(echo "$country_code" | tr '[:lower:]' '[:upper:]')
+
+  valid_country_code=$(curl -s https://gist.githubusercontent.com/ssskip/5a94bfcd2835bf1dea52/raw/3b2e5355eb49336f0c6bc0060c05d927c2d1e004/ISO3166-1.alpha2.json | jq -r)
+  if [[ $valid_country_code != *"$country_code"* ]]; then
+    __set_location
+  fi
+
   if [[ $zip_code =~ ^[0-9]{5}$ ]]; then
-    DATA=$(curl -s "http://api.openweathermap.org/geo/1.0/zip?zip=$zip_code,us&appid=$API_KEY")
+    DATA=$(curl -s "http://api.openweathermap.org/geo/1.0/zip?zip=$zip_code,$country_code&appid=$API_KEY")
     lattitude=$(echo "$DATA" | jq -r '.lat')
     longitude=$(echo "$DATA" | jq -r '.lon')
-    printf "ZIP=%s\nLAT=%s\nLON=%s\n" "$zip_code" "$lattitude" "$longitude" > ~/.weather_location
+    printf "ZIP=%s\nCOUNTRY=%s\nLAT=%s\nLON=%s\n" "$zip_code" "$country_code" "$lattitude" "$longitude" > ~/.weather_location
   else
     echo "Invalid zip code. Please enter a valid 5-digit zip code."
     __set_location
